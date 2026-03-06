@@ -23,9 +23,11 @@ PUB_KEY=$(cat ~/.ssh/id_ed25519.pub)
 echo "[+] Registering on server..."
 REMOTE_CMD="sudo -u $SERVICE_USER /usr/local/bin/register_wormgat.sh \"$PUB_KEY\" \"$LOCAL_USER\""
 ASSIGNED_PORT=$(sshpass -p "$BURROW_PASS" ssh -o StrictHostKeyChecking=accept-new -q "$DEPLOY_USER@$SERVER_IP" "$REMOTE_CMD")
+MQQT_PORT=$((ASSIGNED_PORT + 20000))
 
 if ! [[ "$ASSIGNED_PORT" =~ ^[0-9]+$ ]]; then echo "[!] Error: $ASSIGNED_PORT"; exit 1; fi
 echo "[v] Port Assigned: $ASSIGNED_PORT"
+echo "[v] Plug Port: $MQQT_PORT"
 
 sudo bash -c "cat > /etc/systemd/system/apsys-tunnel.service" <<EOF
 [Unit]
@@ -34,7 +36,7 @@ After=network-online.target
 Wants=network-online.target
 [Service]
 User=$LOCAL_USER
-ExecStart=/usr/bin/ssh -N -T -i /home/$LOCAL_USER/.ssh/id_ed25519 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -o "ExitOnForwardFailure yes" -o "ConnectTimeout 10" -o "StrictHostKeyChecking=accept-new" -R 0.0.0.0:$ASSIGNED_PORT:localhost:22 $SERVICE_USER@$SERVER_IP
+ExecStart=/usr/bin/ssh -N -T -i /home/$LOCAL_USER/.ssh/id_ed25519 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -o "ExitOnForwardFailure yes" -o "ConnectTimeout 10" -o "StrictHostKeyChecking=accept-new" -R 0.0.0.0:$ASSIGNED_PORT:localhost:22 -R 0.0.0.0:$MQQT_PORT:localhost:1883 $SERVICE_USER@$SERVER_IP
 Restart=always
 RestartSec=10
 StartLimitIntervalSec=0
